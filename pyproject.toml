@@ -1,0 +1,13 @@
+[project]
+name = "agent-kit"
+version = "0.1.0"
+description = "Generate AI tool integration files (commands, hooks, skills)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+  { name = "OpenSpec Maintainers" }
+]
+
+[project.scripts]
+ak = "agent_kit.cli:main"

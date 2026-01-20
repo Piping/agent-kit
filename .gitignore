@@ -1,0 +1,5 @@
+.opencode
+.codex
+*.egg-info
+build/
+__pycache__
