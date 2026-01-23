@@ -10,7 +10,7 @@
 - 高级克制：大留白、低饱和中性色、少量高纯度主色点缀
 - 可读性优先：舒适行高（正文约 `1.4–1.5`）、信息层级清晰、交互状态变化克制（`~200ms`）
 
-**关键视觉锚点（来自页面样式）**
+**关键视觉锚点**
 - 主色：`#116dff`
 - 强调/次强调：`#4d33de`
 - 背景：`#f9fafa`
@@ -30,7 +30,7 @@
 
 ## 2) 可复用 Prompt（用于让 LLM 生成页面/组件代码）
 
-把下面这段直接作为提示词使用（建议作为 system/最高优先级消息）：
+作为最高优先级消息
 
 ```text
 你是资深前端 UI/UX 工程师。请用纯 HTML + 纯 CSS 生成页面与组件（不使用任何框架/库/预处理器），并严格遵守以下设计体系：
@@ -49,7 +49,7 @@
 
 ## 3) Design Tokens（W3C Design Tokens 格式）
 
-> 说明：这是“可机读”的统一配置；CSS 变量部分与之对应，建议在工程里保持一致命名。
+> 说明：Machine Readable的统一配置；CSS 变量部分与之对应，建议在工程里保持一致命名。
 
 ```json
 {
@@ -310,10 +310,10 @@ a:hover { color: #3aa6ff; }
   cursor: pointer;
   user-select: none;
   transition: background-color var(--ui-duration-base) var(--ui-ease),
-    border-color var(--ui-duration-base) var(--ui-ease),
-    color var(--ui-duration-base) var(--ui-ease),
-    box-shadow var(--ui-duration-base) var(--ui-ease),
-    opacity var(--ui-duration-base) var(--ui-ease);
+  border-color var(--ui-duration-base) var(--ui-ease),
+  color var(--ui-duration-base) var(--ui-ease),
+  box-shadow var(--ui-duration-base) var(--ui-ease),
+  opacity var(--ui-duration-base) var(--ui-ease);
 }
 .ui-btn--primary {
   background: var(--ui-color-primary);
@@ -648,4 +648,3 @@ a:hover { color: #3aa6ff; }
 - 在项目中提供一个全局样式入口（例如 `app.css`），按顺序粘贴：`CSS Tokens` → `组件 CSS`
 - 根节点默认 light：`<html>`；暗色模式：`<html data-theme="dark">`
 - 页面容器使用 `.ui-container`，组件一律使用 `.ui-*` 类名，避免与业务 CSS 冲突
-
