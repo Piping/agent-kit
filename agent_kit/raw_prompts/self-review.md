@@ -2,7 +2,7 @@
 description: 复盘总结
 ---
 $ARGUMENTS
-把这次对话总结写到 $(cwd)/self-review.md 文件里, 明确日期，然后做
+把这次对话总结写到 $(cwd)/$(date +"%Y.%m%d.%H%M")-self-review.md 文件里, 明确日期，然后做
 1. 背景与目标澄清
 2. 关键事件与过程梳理
 3. 深度归因，特别是失败经验与多维分析
