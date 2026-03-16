@@ -3,14 +3,4 @@ description: TechWriting 技术方案
 ---
 $ARGUMENTS
 基于 STAR 思考方式,完成这个可跨团队阅读的技术方案文档，用于推进评审、分工与落地执行; 确保专业, 读者对象是其他团队
-参考以下目录结构
-摘要
-背景 / 问题 / 目标 / 非目标
-范围 / 影响面 / 依赖
-方案概述
-详细设计
-方案对比与 trade-off
-风险 / 测试 / 监控 / 发布 / 回滚
-任务拆分 / Owner / 里程碑 / TODO
-开放问题
-附录
+基于 Diataxi 结构 来写技术介绍文档 (Tutorial, How-to, Reference, Explaination)
