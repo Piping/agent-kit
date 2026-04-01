@@ -23,19 +23,14 @@ Override the store location with `AKIT_HOME=/some/path`.
 From the `python/` directory:
 
 ```bash
-PYTHONPATH=. python -m agent_kit list
-PYTHONPATH=. python -m agent_kit add ./agent_kit/raw_prompts --yes
-PYTHONPATH=. python -m agent_kit show prompt:socratic
-PYTHONPATH=. python -m agent_kit install prompt:socratic --target codex
-PYTHONPATH=. python -m agent_kit install skill:my-skill --project /path/to/repo
-PYTHONPATH=. python -m agent_kit diff prompt:socratic ./some/other/file.md
-```
-
-If installed via `pip install .`, use:
-
-```bash
+git clone https://github.com/Piping/agent-kit.git
+cd agent-kit && pip3 install .
 akit list
-akit add ./raw_prompts
+akit add ./agent_kit/raw_prompts --yes
+akit show prompt:socratic
+akit install prompt:socratic --target codex
+akit install skill:my-skill --project /path/to/repo
+akit diff prompt:socratic ./some/other/file.md
 ```
 
 ## Install targets
@@ -44,8 +39,6 @@ akit add ./raw_prompts
 - `prompt` + `--target opencode` => `<project>/.opencode/command/<id>.md`
 - `skill` => `<project>/.agents/skills/<id>/...` (copies the whole skill package and rewrites `SKILL.md`)
 - `agents` => `<project>/AGENTS.md` (installs Markdown body without frontmatter)
-
-Installed prompt/skill files use lightweight frontmatter like the files in `raw_prompts/`. Internal store-only fields such as `id`, `kind`, and `version` are not written into installed files.
 
 ## Import heuristics
 
