@@ -13,7 +13,7 @@ Assets are stored under:
 ~/.akit/
   assets/
     prompts/<id>.md
-    skills/<id>/SKILL.md
+    skills/<id>/...
     agents/<id>/AGENTS.md
 ```
 
@@ -40,6 +40,8 @@ Optional fields are preserved, but `id`, `kind`, and `version` are always presen
 - `AGENTS.md` => `agents`
 - any other `*.md` => `prompt`
 
+If a directory contains `SKILL.md`, that directory becomes the skill package root. The whole directory is imported, and Markdown files inside it are excluded from prompt discovery.
+
 ID inference:
 
 - frontmatter `id` wins
@@ -53,10 +55,10 @@ The command prints detected assets and asks for confirmation unless `--yes` is p
 
 - `prompt` + `codex` => `~/.codex/prompts/<id>.md`
 - `prompt` + `opencode` => `<project>/.opencode/command/<id>.md`
-- `skill` => `<project>/.agents/skills/<id>/SKILL.md`
+- `skill` => `<project>/.agents/skills/<id>/...`
 - `agents` => `<project>/AGENTS.md`
 
-`install` renders prompts and skills using public frontmatter only, matching the lightweight style in `raw_prompts/`. Internal management fields such as `id`, `kind`, and `version` stay in the asset store and are stripped from installed files. For `agents`, it writes the Markdown body without frontmatter so the final `AGENTS.md` stays natural.
+`install` renders prompts and skills using public frontmatter only, matching the lightweight style in `raw_prompts/`. Internal management fields such as `id`, `kind`, and `version` stay in the asset store and are stripped from installed files. Skill installs copy the whole stored package directory and then rewrite only the installed `SKILL.md`. For `agents`, it writes the Markdown body without frontmatter so the final `AGENTS.md` stays natural.
 
 ## Diff Semantics
 

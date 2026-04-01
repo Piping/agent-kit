@@ -14,6 +14,7 @@ class Asset:
     kind: str
     version: str
     path: Path
+    root_path: Path
     body: str
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -25,6 +26,7 @@ class Asset:
 @dataclass(frozen=True)
 class ImportCandidate:
     source_path: Path
+    entry_path: Path
     asset_id: str
     kind: str
     body: str

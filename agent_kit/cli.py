@@ -4,7 +4,13 @@ from pathlib import Path
 from typing import Optional
 
 from .git_tools import diff_asset_to_path, diff_asset_to_revision, is_git_repo
-from .installers import default_target_for, render_install_content, resolve_install_target
+from .installers import (
+    default_target_for,
+    install_skill_package,
+    render_install_content,
+    resolve_install_target,
+    skill_install_is_up_to_date,
+)
 from .store import delete_asset, get_store_root, import_candidates, list_assets, resolve_asset, scan_candidates
 
 
@@ -148,8 +154,21 @@ def cmd_install(
     asset = resolve_asset(store_root, selector)
     resolved_target = target or default_target_for(asset)
     destination = resolve_install_target(asset, resolved_target, project=project, dest=dest)
-    destination.parent.mkdir(parents=True, exist_ok=True)
     desired = render_install_content(asset)
+
+    if asset.kind == "skill":
+        destination_root = destination.parent
+        if skill_install_is_up_to_date(asset, destination_root):
+            print(f"up-to-date: {destination_root}")
+            return 0
+        if destination_root.exists() and not force:
+            raise ValueError(f"Destination exists: {destination_root}. Re-run with --force to overwrite.")
+        destination_root.parent.mkdir(parents=True, exist_ok=True)
+        install_skill_package(asset, destination)
+        print(f"installed: {asset.selector} -> {destination_root}")
+        return 0
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
 
     if destination.exists():
         existing = destination.read_text(encoding="utf-8")

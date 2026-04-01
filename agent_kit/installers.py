@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -62,3 +63,40 @@ def render_install_content(asset: Asset) -> str:
     if asset.kind == "agents":
         return asset.body
     return compose_install_document(asset.metadata, asset.body)
+
+
+def skill_install_is_up_to_date(asset: Asset, destination_root: Path) -> bool:
+    if not destination_root.is_dir():
+        return False
+
+    source_files = {
+        path.relative_to(asset.root_path): path
+        for path in asset.root_path.rglob("*")
+        if path.is_file()
+    }
+    destination_files = {
+        path.relative_to(destination_root): path
+        for path in destination_root.rglob("*")
+        if path.is_file()
+    }
+
+    if set(source_files.keys()) != set(destination_files.keys()):
+        return False
+
+    for relative_path, source_path in source_files.items():
+        destination_path = destination_files[relative_path]
+        if relative_path == Path("SKILL.md"):
+            if destination_path.read_text(encoding="utf-8") != render_install_content(asset):
+                return False
+            continue
+        if source_path.read_bytes() != destination_path.read_bytes():
+            return False
+    return True
+
+
+def install_skill_package(asset: Asset, destination_entry: Path) -> None:
+    destination_root = destination_entry.parent
+    if destination_root.exists():
+        shutil.rmtree(destination_root)
+    shutil.copytree(asset.root_path, destination_root)
+    destination_entry.write_text(render_install_content(asset), encoding="utf-8")

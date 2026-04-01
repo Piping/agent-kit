@@ -12,7 +12,7 @@ By default assets live in:
 ~/.akit/
   assets/
     prompts/<id>.md
-    skills/<id>/SKILL.md
+    skills/<id>/...
     agents/<id>/AGENTS.md
 ```
 
@@ -42,7 +42,7 @@ akit add ./raw_prompts
 
 - `prompt` + `--target codex` => `$CODEX_HOME/prompts/<id>.md` or `~/.codex/prompts/<id>.md`
 - `prompt` + `--target opencode` => `<project>/.opencode/command/<id>.md`
-- `skill` => `<project>/.agents/skills/<id>/SKILL.md`
+- `skill` => `<project>/.agents/skills/<id>/...` (copies the whole skill package and rewrites `SKILL.md`)
 - `agents` => `<project>/AGENTS.md` (installs Markdown body without frontmatter)
 
 Installed prompt/skill files use lightweight frontmatter like the files in `raw_prompts/`. Internal store-only fields such as `id`, `kind`, and `version` are not written into installed files.
@@ -54,6 +54,8 @@ Installed prompt/skill files use lightweight frontmatter like the files in `raw_
 - `SKILL.md` => `skill`
 - `AGENTS.md` => `agents`
 - any other Markdown file => `prompt`
+
+When a directory contains `SKILL.md`, `akit` treats that whole directory as a single skill package. Markdown files under that skill directory are bundled with the skill and are not imported separately as prompts.
 
 The command normalizes frontmatter to ensure each stored asset has:
 
