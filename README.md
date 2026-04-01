@@ -1,28 +1,62 @@
 # Agent Kit
 
-This directory contains a small Python CLI that generates AI tool integration files (commands, hooks, skills) and borrows managed-block update patterns from OpenSpec.
+`agent-kit` is now a small personal asset manager for prompts, skills, and `AGENTS.md` files.
 
-## Usage
+The package name stays `agent-kit`, while the CLI name is `akit`.
 
-From the repo root:
+## Store layout
 
+By default assets live in:
+
+```text
+~/.akit/
+  assets/
+    prompts/<id>.md
+    skills/<id>/SKILL.md
+    agents/<id>/AGENTS.md
 ```
-PYTHONPATH=. python -m agent_kit --project . --tools opencode,codex
-```
 
-By default it generates commands, hooks, and skills for the selected tools. Use flags to restrict output:
+Override the store location with `AKIT_HOME=/some/path`.
+
+## Commands
+
+From the `python/` directory:
 
 ```bash
-python3 -m agent_kit --tools opencode --commands
-python3 -m agent_kit --tools opencode --hooks
-python3 -m agent_kit --tools claudecode --skills
-
-# If installed via `pip install . `, the cli cmd is:
-ak --project . --tools opencode,codex
+PYTHONPATH=. python -m agent_kit list
+PYTHONPATH=. python -m agent_kit add ./agent_kit/raw_prompts --yes
+PYTHONPATH=. python -m agent_kit show prompt:socratic
+PYTHONPATH=. python -m agent_kit install prompt:socratic --target codex
+PYTHONPATH=. python -m agent_kit install skill:my-skill --project /path/to/repo
+PYTHONPATH=. python -m agent_kit diff prompt:socratic ./some/other/file.md
 ```
 
-## Notes
+If installed via `pip install .`, use:
 
-- OpenCode commands are written under `.opencode/command/` to match existing OpenSpec conventions.
-- OpenCode hooks are written to `.opencode/hooks.jsonc` using commented OpenSpec markers.
-- Codex commands are written under `$CODEX_HOME/prompts` or `~/.codex/prompts`.
+```bash
+akit list
+akit add ./raw_prompts
+```
+
+## Install targets
+
+- `prompt` + `--target codex` => `$CODEX_HOME/prompts/<id>.md` or `~/.codex/prompts/<id>.md`
+- `prompt` + `--target opencode` => `<project>/.opencode/command/<id>.md`
+- `skill` => `<project>/.agents/skills/<id>/SKILL.md`
+- `agents` => `<project>/AGENTS.md` (installs Markdown body without frontmatter)
+
+Installed prompt/skill files use lightweight frontmatter like the files in `raw_prompts/`. Internal store-only fields such as `id`, `kind`, and `version` are not written into installed files.
+
+## Import heuristics
+
+`akit add <dir>` scans Markdown files recursively and classifies them as:
+
+- `SKILL.md` => `skill`
+- `AGENTS.md` => `agents`
+- any other Markdown file => `prompt`
+
+The command normalizes frontmatter to ensure each stored asset has:
+
+- `id`
+- `kind`
+- `version`

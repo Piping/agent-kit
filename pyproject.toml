@@ -1,7 +1,7 @@
 [project]
 name = "agent-kit"
 version = "0.1.0"
-description = "Generate AI tool integration files (commands, hooks, skills)."
+description = "Manage personal prompt, skill, and AGENTS assets."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
@@ -10,4 +10,4 @@ authors = [
 ]
 
 [project.scripts]
-ak = "agent_kit.cli:main"
+akit = "agent_kit.cli:main"
