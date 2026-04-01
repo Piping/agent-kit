@@ -1,29 +1,61 @@
-## 1. CLI and Store
+# Agent Kit Scope
 
-- [x] 1.1 Replace the old generator CLI with subcommands for asset management.
-- [x] 1.2 Add `$AKIT_HOME` support and a normalized global store layout.
-- [x] 1.3 Add selector-based asset lookup (`kind:id` or unique `id`).
+## Core CLI
 
-## 2. Asset Import and Metadata
+Agent Kit provides these primary commands:
 
-- [x] 2.1 Implement Markdown frontmatter parsing and normalization.
-- [x] 2.2 Implement recursive asset scanning with heuristics for prompt/skill/agents.
-- [x] 2.3 Add confirmation flow for imports and deletes.
+- `list`
+- `show`
+- `add`
+- `del`
+- `install`
+- `diff`
 
-## 3. Install Targets
+## Asset Coverage
 
-- [x] 3.1 Install prompts to Codex.
-- [x] 3.2 Install prompts to OpenCode command directories.
-- [x] 3.3 Install skills to `.agents/skills/<id>/SKILL.md`.
-- [x] 3.4 Install agents assets to project-root `AGENTS.md`.
+The current scope includes:
 
-## 4. Inspection and Diff
+- prompts as standalone Markdown files
+- skills as package directories rooted by `SKILL.md`
+- `AGENTS.md` as a project document asset
 
-- [x] 4.1 Add `list` and `show`.
-- [x] 4.2 Add delete support.
-- [x] 4.3 Add Git-backed source diff support.
+## Import Behavior
 
-## 5. Validation
+Import supports:
 
-- [x] 5.1 Update package documentation.
-- [x] 5.2 Run smoke checks with a temporary `AKIT_HOME`.
+- recursive scanning of local directories
+- automatic asset classification
+- skill package detection
+- confirmation before import unless `--yes` is provided
+- normalized store metadata for every saved asset
+
+## Installation Behavior
+
+Installation supports:
+
+- Codex prompt directories
+- OpenCode command directories inside a project
+- `.agents/skills/<id>/...` inside a project
+- project-root `AGENTS.md`
+
+Skill installation preserves package contents such as `references/`, `scripts/`, and other package-local files.
+
+## Inspection and Comparison
+
+Inspection supports:
+
+- listing by asset kind or across the whole store
+- direct asset viewing by selector
+- comparison against another file path
+- comparison against a Git revision when the asset store is versioned
+
+## Documentation Expectations
+
+The documentation set should answer these questions for a first-time reader:
+
+- what Agent Kit is for
+- what an asset looks like
+- where assets are stored
+- how to import assets
+- how to install assets into a project or tool
+- how to inspect and compare stored assets

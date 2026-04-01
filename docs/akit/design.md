@@ -1,13 +1,13 @@
-# Design: `akit` Global Asset Store
+# Agent Kit Design
 
-## Store Layout
+## Storage Model
 
-`akit` uses a user-owned store rooted at:
+Agent Kit uses a user-owned store rooted at:
 
 - `$AKIT_HOME` when set
 - otherwise `~/.akit`
 
-Assets are stored under:
+The store layout is:
 
 ```text
 ~/.akit/
@@ -17,60 +17,106 @@ Assets are stored under:
     agents/<id>/AGENTS.md
 ```
 
-This separates the source-of-truth library from installed tool files.
+The store contains normalized source assets. Tool-specific or project-specific installations are written elsewhere.
 
-## Asset Model
+## Asset Types
 
-Each asset is a Markdown file with frontmatter. Minimal normalized metadata:
+### Prompt
+
+A prompt is a single Markdown file. In the store it is saved as:
+
+```text
+assets/prompts/<id>.md
+```
+
+### Skill
+
+A skill is a package directory rooted by `SKILL.md`. The whole directory is stored under:
+
+```text
+assets/skills/<id>/
+```
+
+Supporting files such as `references/`, `scripts/`, templates, or other package-local content remain inside the package.
+
+### Agents
+
+An `agents` asset is a single `AGENTS.md` file stored as:
+
+```text
+assets/agents/<id>/AGENTS.md
+```
+
+## Metadata Model
+
+Stored assets use normalized metadata so the CLI can identify and manage them consistently. Every stored asset has:
 
 ```yaml
 id: socratic
 kind: prompt
 version: 1
-description: ...
 ```
 
-Optional fields are preserved, but `id`, `kind`, and `version` are always present after import.
+Additional metadata such as `name`, `title`, `description`, or `tags` is preserved when present.
 
-## Detection Rules
+## Import Pipeline
 
-`akit add <path>` scans Markdown files recursively and classifies them with heuristics:
+`akit add <path>` applies these rules:
 
-- `SKILL.md` => `skill`
-- `AGENTS.md` => `agents`
-- any other `*.md` => `prompt`
+- `SKILL.md` defines a skill package root
+- `AGENTS.md` defines an agents asset
+- other Markdown files are treated as prompts
 
-If a directory contains `SKILL.md`, that directory becomes the skill package root. The whole directory is imported, and Markdown files inside it are excluded from prompt discovery.
+When a skill package is detected:
 
-ID inference:
+- the package directory is imported as one asset
+- nested Markdown files remain part of the package
+- nested Markdown files are excluded from prompt discovery
+- direct attempts to import Markdown from inside a skill package are rejected in favor of the package root
 
-- frontmatter `id` wins
-- `SKILL.md` defaults to parent directory name
-- `AGENTS.md` defaults to parent directory name
-- prompts default to the file stem
+Asset ids are resolved in this order:
 
-The command prints detected assets and asks for confirmation unless `--yes` is provided.
+1. frontmatter `id`
+2. parent directory name for `SKILL.md`
+3. parent directory name for `AGENTS.md`
+4. file stem for prompts
 
-## Install Targets
+## Install Pipeline
 
-- `prompt` + `codex` => `~/.codex/prompts/<id>.md`
-- `prompt` + `opencode` => `<project>/.opencode/command/<id>.md`
-- `skill` => `<project>/.agents/skills/<id>/...`
-- `agents` => `<project>/AGENTS.md`
+### Prompt Installation
 
-`install` renders prompts and skills using public frontmatter only, matching the lightweight style in `raw_prompts/`. Internal management fields such as `id`, `kind`, and `version` stay in the asset store and are stripped from installed files. Skill installs copy the whole stored package directory and then rewrite only the installed `SKILL.md`. For `agents`, it writes the Markdown body without frontmatter so the final `AGENTS.md` stays natural.
+- Codex target: `$CODEX_HOME/prompts/<id>.md` or `~/.codex/prompts/<id>.md`
+- OpenCode target: `<project>/.opencode/command/<id>.md`
 
-## Diff Semantics
+### Skill Installation
 
-The diff feature is intentionally source-oriented:
+- Target: `<project>/.agents/skills/<id>/...`
+- The whole stored package directory is copied into the project
+- The installed `SKILL.md` is written with public-facing frontmatter only
 
-- compare an asset against another file path via `git diff --no-index`
-- compare an asset against a Git revision inside the asset store via `git -C <store> diff <rev> -- <asset>`
+### Agents Installation
 
-This keeps `diff` useful when the store itself is versioned with Git.
+- Target: `<project>/AGENTS.md`
+- The installed file is the Markdown body without frontmatter
 
-## Trade-offs
+## Frontmatter Rules
 
-- A global store is the right first abstraction for a personal toolbox, but it means project-local assets must be explicitly installed.
-- Heuristic import is fast and practical, but not perfect; confirmation remains part of the import flow.
-- No templating for `AGENTS.md` keeps v1 simple and predictable.
+The asset store keeps internal management metadata such as `id`, `kind`, and `version`.
+
+Installed prompt and skill entry files keep only public-facing metadata. This keeps the installed files close to natural hand-authored prompt and skill files while preserving management metadata in the store.
+
+## Diff Model
+
+Agent Kit supports two comparison modes:
+
+- asset vs local file path using `git diff --no-index`
+- asset vs Git revision inside the asset store using `git -C <store> diff <rev> -- <asset>`
+
+This model keeps diff focused on the source asset rather than tool installation state.
+
+## Operational Characteristics
+
+- The global store keeps a single canonical copy of each asset.
+- Project installation is explicit.
+- Skill packages remain intact across import and installation.
+- `AGENTS.md` stays readable as a normal document when installed into a project.
