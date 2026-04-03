@@ -113,7 +113,7 @@ def compose_install_document(metadata: Dict[str, Any], body: str) -> str:
     public_metadata = {
         key: value
         for key, value in metadata.items()
-        if key not in {"id", "kind", "version"}
+        if key not in {"id", "kind", "version"} and not key.startswith("_")
     }
     normalized_body = body.lstrip("\n").rstrip() + "\n"
     if not public_metadata:

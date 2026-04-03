@@ -19,6 +19,16 @@ The store layout is:
 
 The store contains normalized source assets. Tool-specific or project-specific installations are written elsewhere.
 
+Hidden history snapshots are stored alongside current assets:
+
+```text
+~/.akit/
+  assets/
+    prompts/.history/<id>/v0001/...
+    skills/.history/<id>/v0001/...
+    agents/.history/<id>/v0001/...
+```
+
 ## Asset Types
 
 ### Prompt
@@ -59,6 +69,8 @@ version: 1
 
 Additional metadata such as `name`, `title`, `description`, or `tags` is preserved when present.
 
+Internal metadata fields also track source timestamps and content fingerprints so imports can decide whether a same-name asset represents a genuinely new version.
+
 ## Import Pipeline
 
 `akit add <path>` applies these rules:
@@ -81,6 +93,18 @@ Asset ids are resolved in this order:
 3. parent directory name for `AGENTS.md`
 4. file stem for prompts
 
+## Versioning Rules
+
+Imports are versioned by `kind:id`.
+
+For an existing asset:
+
+- the current version remains at the standard asset path
+- historical versions are stored in the hidden history directory
+- a new version is created only when the incoming asset does not match any known version by content fingerprint or source timestamp
+
+This avoids duplicate history entries when an earlier snapshot is imported again.
+
 ## Install Pipeline
 
 ### Prompt Installation
@@ -99,11 +123,42 @@ Asset ids are resolved in this order:
 - Target: `<project>/AGENTS.md`
 - The installed file is the Markdown body without frontmatter
 
+## Edit Pipeline
+
+`akit edit` operates on the canonical stored asset in `AKIT_HOME`.
+
+- prompts edit the current stored file
+- agents edit the current stored `AGENTS.md`
+- skills edit the current stored package directory
+
+The command opens a temporary editable copy, waits for the editor to exit, then imports the result back into the store using normal versioning rules. This avoids in-place mutations that would interfere with version comparison.
+
 ## Frontmatter Rules
 
 The asset store keeps internal management metadata such as `id`, `kind`, and `version`.
 
 Installed prompt and skill entry files keep only public-facing metadata. This keeps the installed files close to natural hand-authored prompt and skill files while preserving management metadata in the store.
+
+## Git Integration
+
+When `AKIT_HOME` is a git repository, mutating commands stage and commit only their own touched paths.
+
+- `add` stages newly created or updated current asset paths and new history snapshots
+- `edit` stages updated current asset paths and any new history snapshots
+- `del` stages asset removal paths and history removal paths
+
+Each mutating command creates a single conventional-commit-style commit when changes occur.
+
+## Push Model
+
+`akit push` is a manual sync command.
+
+- configuration is loaded from `AKIT_HOME/config.toml`
+- the command targets a single remote
+- if the remote branch does not exist yet, Agent Kit pushes directly
+- if the remote branch exists, Agent Kit fetches, rebases, and then pushes
+
+The push workflow never runs automatically as a side effect of other commands.
 
 ## Diff Model
 

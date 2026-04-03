@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 ASSET_KINDS = ("prompt", "skill", "agents")
@@ -35,3 +35,10 @@ class ImportCandidate:
     @property
     def selector(self) -> str:
         return f"{self.kind}:{self.asset_id}"
+
+
+@dataclass(frozen=True)
+class MutationResult:
+    status: str
+    asset: Asset
+    touched_paths: List[Path] = field(default_factory=list)

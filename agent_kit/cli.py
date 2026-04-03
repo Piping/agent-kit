@@ -1,8 +1,12 @@
 import argparse
+import shutil
 import sys
+import tempfile
+import subprocess
 from pathlib import Path
 from typing import Optional
 
+from .config import load_akit_config
 from .git_tools import diff_asset_to_path, diff_asset_to_revision, is_git_repo
 from .installers import (
     default_target_for,
@@ -11,7 +15,16 @@ from .installers import (
     resolve_install_target,
     skill_install_is_up_to_date,
 )
-from .store import delete_asset, get_store_root, import_candidates, list_assets, resolve_asset, scan_candidates
+from .git_tools import commit_paths, current_branch, ensure_remote, push_current_branch, resolve_editor_command, stage_paths
+from .store import (
+    build_candidate,
+    delete_asset_with_paths,
+    get_store_root,
+    import_candidates,
+    list_assets,
+    resolve_asset,
+    scan_candidates,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -38,6 +51,9 @@ def build_parser() -> argparse.ArgumentParser:
     add_parser.add_argument("--kind", choices=("prompt", "skill", "agents"))
     add_parser.add_argument("-y", "--yes", action="store_true", help="Skip confirmation")
 
+    edit_parser = subparsers.add_parser("edit", help="Edit an asset and create a new version if it changes")
+    edit_parser.add_argument("selector", help="Asset selector: kind:id or unique id")
+
     del_parser = subparsers.add_parser("del", help="Delete an asset from the store")
     del_parser.add_argument("selector", help="Asset selector: kind:id or unique id")
     del_parser.add_argument("-y", "--yes", action="store_true", help="Skip confirmation")
@@ -54,6 +70,10 @@ def build_parser() -> argparse.ArgumentParser:
     diff_parser.add_argument("other", nargs="?", help="Other file path to compare against")
     diff_parser.add_argument("--rev", help="Git revision inside the asset store")
 
+    push_parser = subparsers.add_parser("push", help="Fetch, rebase, and push the AKIT_HOME repository")
+    push_parser.add_argument("--remote", help="Override the configured remote name")
+    push_parser.add_argument("--branch", help="Override the configured branch")
+
     return parser
 
 
@@ -69,12 +89,16 @@ def main() -> int:
             return cmd_show(store_root, args.selector, args.body_only)
         if args.command == "add":
             return cmd_add(store_root, args.source, args.kind, args.yes)
+        if args.command == "edit":
+            return cmd_edit(store_root, args.selector)
         if args.command == "del":
             return cmd_del(store_root, args.selector, args.yes)
         if args.command == "install":
             return cmd_install(store_root, args.selector, args.target, args.project, args.dest, args.force)
         if args.command == "diff":
             return cmd_diff(store_root, args.selector, args.other, args.rev)
+        if args.command == "push":
+            return cmd_push(store_root, args.remote, args.branch)
     except (FileNotFoundError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
@@ -106,7 +130,7 @@ def cmd_show(store_root: Path, selector: str, body_only: bool) -> int:
     print(f"path: {asset.path}")
     print(f"version: {asset.version}")
     for key in sorted(asset.metadata):
-        if key in ("id", "kind", "version"):
+        if key in ("id", "kind", "version") or key.startswith("_"):
             continue
         print(f"{key}: {asset.metadata[key]}")
     print("")
@@ -128,8 +152,26 @@ def cmd_add(store_root: Path, source: str, kind: Optional[str], yes: bool) -> in
         return 1
 
     results = import_candidates(store_root, candidates)
-    for status, asset in results:
-        print(f"{status}: {asset.selector} -> {asset.path}")
+    changed = [result for result in results if result.status != "unchanged"]
+    for result in results:
+        print(f"{result.status}: {result.asset.selector} -> {result.asset.path}")
+    _auto_commit_if_needed(store_root, changed)
+    return 0
+
+
+def cmd_edit(store_root: Path, selector: str) -> int:
+    asset = resolve_asset(store_root, selector)
+    editor = resolve_editor_command()
+    with tempfile.TemporaryDirectory(prefix=f"akit-edit-{asset.id}-") as tmpdir:
+        temp_root = Path(tmpdir)
+        editable_path = _prepare_edit_target(asset, temp_root)
+        result = subprocess.run([*editor, str(editable_path)], check=False)
+        if result.returncode != 0:
+            raise ValueError(f"Editor exited with status {result.returncode}")
+        candidate = build_candidate(editable_path, kind_hint=asset.kind)
+        mutation = import_candidates(store_root, [candidate])[0]
+        print(f"{mutation.status}: {mutation.asset.selector} -> {mutation.asset.path}")
+        _auto_commit_if_needed(store_root, [mutation], action="update")
     return 0
 
 
@@ -138,8 +180,9 @@ def cmd_del(store_root: Path, selector: str, yes: bool) -> int:
     if not yes and not _confirm(f"Delete {asset.selector} from {store_root}? [y/N]: "):
         print("Cancelled.")
         return 1
-    removed = delete_asset(store_root, selector)
-    print(f"deleted: {removed.selector}")
+    removed = delete_asset_with_paths(store_root, selector)
+    print(f"deleted: {removed.asset.selector}")
+    _auto_commit_if_needed(store_root, [removed], action="delete")
     return 0
 
 
@@ -204,8 +247,74 @@ def cmd_diff(store_root: Path, selector: str, other: Optional[str], revision: Op
     return result.returncode
 
 
+def cmd_push(store_root: Path, remote_override: Optional[str], branch_override: Optional[str]) -> int:
+    if not is_git_repo(store_root):
+        raise ValueError(f"AKIT_HOME is not a git repository: {store_root}")
+
+    config = load_akit_config(store_root)
+    git_config = config.get("git", {}) if isinstance(config.get("git", {}), dict) else {}
+    remote = remote_override or git_config.get("remote", "origin")
+    branch = branch_override or git_config.get("branch") or current_branch(store_root)
+    url = git_config.get("url")
+
+    ensure_remote(store_root, remote, url)
+    push_current_branch(store_root, remote, branch)
+    print(f"pushed: {remote}/{branch}")
+    return 0
+
+
 def _confirm(prompt: str) -> bool:
     return input(prompt).strip().lower() in {"y", "yes"}
+
+
+def _prepare_edit_target(asset, temp_root: Path) -> Path:
+    if asset.kind == "skill":
+        destination = temp_root / asset.id
+        shutil.copytree(asset.root_path, destination)
+        return destination
+
+    suffix = asset.path.suffix or ".md"
+    name = asset.path.name if asset.kind == "agents" else f"{asset.id}{suffix}"
+    destination = temp_root / name
+    destination.write_text(asset.path.read_text(encoding="utf-8"), encoding="utf-8")
+    return destination
+
+
+def _auto_commit_if_needed(store_root: Path, results, action: Optional[str] = None) -> None:
+    if not is_git_repo(store_root):
+        return
+
+    touched_paths = []
+    changed_results = []
+    for result in results:
+        if result.status in ("unchanged",):
+            continue
+        changed_results.append(result)
+        for path in result.touched_paths:
+            if path not in touched_paths:
+                touched_paths.append(path)
+
+    if not changed_results:
+        return
+
+    stage_paths(store_root, touched_paths)
+    if action == "delete":
+        message = _build_delete_commit_message(changed_results[0].asset)
+    else:
+        message = _build_upsert_commit_message(changed_results)
+    commit_paths(store_root, touched_paths, message)
+
+
+def _build_upsert_commit_message(results) -> str:
+    if len(results) == 1:
+        result = results[0]
+        verb = "add" if result.status == "created" else "update"
+        return f"feat(akit): {verb} {result.asset.kind} {result.asset.id} v{result.asset.version}"
+    return f"feat(akit): update {len(results)} assets"
+
+
+def _build_delete_commit_message(asset) -> str:
+    return f"feat(akit): delete {asset.kind} {asset.id}"
 
 
 if __name__ == "__main__":

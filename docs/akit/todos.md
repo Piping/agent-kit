@@ -7,9 +7,11 @@ Agent Kit provides these primary commands:
 - `list`
 - `show`
 - `add`
+- `edit`
 - `del`
 - `install`
 - `diff`
+- `push`
 
 ## Asset Coverage
 
@@ -28,6 +30,9 @@ Import supports:
 - skill package detection
 - confirmation before import unless `--yes` is provided
 - normalized store metadata for every saved asset
+- hidden history retention for same-name assets
+- version bumps only for content or timestamp states that are not already known
+- automatic version checks after edits
 
 ## Installation Behavior
 
@@ -40,6 +45,15 @@ Installation supports:
 
 Skill installation preserves package contents such as `references/`, `scripts/`, and other package-local files.
 
+## Editing Behavior
+
+Editing supports:
+
+- prompt editing from the canonical stored file
+- agents editing from the canonical stored file
+- skill editing from the canonical stored package directory
+- automatic post-edit import and version evaluation
+
 ## Inspection and Comparison
 
 Inspection supports:
@@ -48,6 +62,14 @@ Inspection supports:
 - direct asset viewing by selector
 - comparison against another file path
 - comparison against a Git revision when the asset store is versioned
+
+## Git Workflow
+
+Git workflow support includes:
+
+- automatic staging for `add`, `edit`, and `del`
+- one conventional-style commit per mutating command when changes occur
+- manual `push` to a configured single remote
 
 ## Documentation Expectations
 
