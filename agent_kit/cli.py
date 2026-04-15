@@ -62,6 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
     install_parser.add_argument("selector", help="Asset selector: kind:id or unique id")
     install_parser.add_argument("--target", choices=("codex", "opencode", "skill", "agents"))
     install_parser.add_argument("--project", help="Project root for project-scoped targets")
+    install_parser.add_argument("--user", action="store_true", help="Install into the user-scoped ~/ target for the selected tool")
     install_parser.add_argument("--dest", help="Explicit destination file path")
     install_parser.add_argument("--force", action="store_true", help="Overwrite when destination exists")
 
@@ -94,7 +95,7 @@ def main() -> int:
         if args.command == "del":
             return cmd_del(store_root, args.selector, args.yes)
         if args.command == "install":
-            return cmd_install(store_root, args.selector, args.target, args.project, args.dest, args.force)
+            return cmd_install(store_root, args.selector, args.target, args.project, args.user, args.dest, args.force)
         if args.command == "diff":
             return cmd_diff(store_root, args.selector, args.other, args.rev)
         if args.command == "push":
@@ -191,12 +192,13 @@ def cmd_install(
     selector: str,
     target: Optional[str],
     project: Optional[str],
+    user: bool,
     dest: Optional[str],
     force: bool,
 ) -> int:
     asset = resolve_asset(store_root, selector)
     resolved_target = target or default_target_for(asset)
-    destination = resolve_install_target(asset, resolved_target, project=project, dest=dest)
+    destination = resolve_install_target(asset, resolved_target, project=project, dest=dest, user=user)
     desired = render_install_content(asset)
 
     if asset.kind == "skill":
