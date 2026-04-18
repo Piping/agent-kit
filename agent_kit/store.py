@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from difflib import SequenceMatcher
 import os
 import re
 import shutil
@@ -403,6 +404,91 @@ def resolve_asset(root: Path, selector: str) -> Asset:
         options = ", ".join(item.selector for item in matches)
         raise ValueError(f"Asset id '{selector}' is ambiguous. Use one of: {options}")
     return matches[0]
+
+
+def suggest_asset_selectors(root: Path, selector: str, limit: int = 5) -> List[str]:
+    ensure_store(root)
+    query = selector.strip().lower()
+    if not query:
+        return []
+
+    requested_kind: Optional[str] = None
+    if ":" in query:
+        kind, asset_id = query.split(":", 1)
+        if kind in ASSET_KINDS:
+            requested_kind = kind
+        query_id = slugify(asset_id)
+        selector_query = f"{kind}:{query_id}"
+    else:
+        query_id = slugify(query)
+        selector_query = query_id
+
+    ranked: List[Tuple[float, str]] = []
+    for asset in list_assets(root):
+        if requested_kind and asset.kind != requested_kind:
+            continue
+        score = _selector_match_score(asset, selector_query, query_id, scoped=bool(requested_kind))
+        if score > 0:
+            ranked.append((score, asset.selector))
+
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    return [selector for _, selector in ranked[:limit]]
+
+
+def _selector_match_score(asset: Asset, selector_query: str, query_id: str, scoped: bool) -> float:
+    if not query_id:
+        return 0.0
+
+    token_score = _keyword_match_score(query_id, asset.id)
+    if token_score > 0:
+        return token_score
+
+    selector_score = SequenceMatcher(None, selector_query, asset.selector).ratio()
+    id_score = SequenceMatcher(None, query_id, asset.id).ratio()
+
+    if asset.selector.startswith(selector_query):
+        selector_score += 0.35
+    elif selector_query in asset.selector:
+        selector_score += 0.15
+
+    if asset.id.startswith(query_id):
+        id_score += 0.35
+    elif query_id in asset.id:
+        id_score += 0.15
+
+    # Similarity is only a fallback when there is no direct keyword-style match.
+    if scoped:
+        score = min(max(selector_score, id_score + 0.05), 1.0)
+    else:
+        score = min(max(id_score, selector_score - 0.1), 1.0)
+    return score if score >= 0.7 else 0.0
+
+
+def _keyword_match_score(query_id: str, asset_id: str) -> float:
+    if asset_id.startswith(query_id):
+        return 1.0
+
+    asset_tokens = [token for token in re.split(r"[-_.]+", asset_id) if token]
+    query_tokens = [token for token in re.split(r"[-_.]+", query_id) if token]
+    if not query_tokens:
+        return 0.0
+
+    if any(token == query_id for token in asset_tokens):
+        return 0.98
+    if any(token.startswith(query_id) for token in asset_tokens):
+        return 0.96
+
+    for query_token in query_tokens:
+        if any(token == query_token for token in asset_tokens):
+            return 0.94
+    for query_token in query_tokens:
+        if any(token.startswith(query_token) for token in asset_tokens):
+            return 0.92
+
+    if query_id in asset_id and len(query_id) >= 3:
+        return 0.9
+
+    return 0.0
 
 
 def delete_asset(root: Path, selector: str) -> Asset:

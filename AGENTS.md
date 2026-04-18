@@ -27,5 +27,6 @@ The source of truth is the asset store under `AKIT_HOME`. Installed files are de
 - Avoid parallel mutation tests against a single git repo unless the locking behavior itself is under test.
 
 ## Rules for working on this project
+- local install command: `pip3 install -e . --break-system-packages`
 - commits/docs for the project MUST not include personal info, system infos
 - 编辑文档的时候请按最终成稿方式输出，面向第一次阅读的人。不要保留编辑痕迹，不要解释修改过程

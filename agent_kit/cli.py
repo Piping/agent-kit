@@ -24,6 +24,7 @@ from .store import (
     list_assets,
     resolve_asset,
     scan_candidates,
+    suggest_asset_selectors,
 )
 
 
@@ -122,7 +123,23 @@ def cmd_list(store_root: Path, kind: Optional[str]) -> int:
 
 
 def cmd_show(store_root: Path, selector: str, body_only: bool) -> int:
-    asset = resolve_asset(store_root, selector)
+    try:
+        asset = resolve_asset(store_root, selector)
+    except FileNotFoundError as exc:
+        suggestions = suggest_asset_selectors(store_root, selector)
+        if suggestions:
+            options = ", ".join(suggestions)
+            raise FileNotFoundError(f"{exc}. Did you mean: {options}") from exc
+        raise
+    except ValueError as exc:
+        if not str(exc).startswith("Unknown asset kind:"):
+            raise
+        suggestions = suggest_asset_selectors(store_root, selector)
+        if suggestions:
+            options = ", ".join(suggestions)
+            raise FileNotFoundError(f"Asset not found: {selector}. Did you mean: {options}") from exc
+        raise FileNotFoundError(f"Asset not found: {selector}") from exc
+
     if body_only:
         sys.stdout.write(asset.body)
         return 0
