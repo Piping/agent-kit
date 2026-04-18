@@ -51,7 +51,7 @@ PYTHONPATH=. python3 -m agent_kit list
 Import a prompt library:
 
 ```bash
-akit add ./agent_kit/raw_prompts --yes
+akit add ./base_asset/prompts --yes
 ```
 
 Inspect the imported assets:
